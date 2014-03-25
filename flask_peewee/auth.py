@@ -29,6 +29,12 @@ class LoginForm(Form):
     username = TextField('Username', validators=[validators.Required()])
     password = PasswordField('Password', validators=[validators.Required()])
 
+class TokenLoginForm(Form):
+	username = TextField('Username')
+	ihash = PasswordField('Hash')
+	salt1 = TextField('Salt1')
+	salt2 = TextField('Salt2')
+
 
 class BaseUser(object):
     def set_password(self, password):
@@ -36,6 +42,22 @@ class BaseUser(object):
 
     def check_password(self, password):
         return check_password(password, self.password)
+
+def interlacehash(password, salt1, salt2=None):
+	if salt2 is None:
+		salt2=str(random.randint(100,1000000))
+	x=sha256(password+salt1)
+	# 8 bit ascii of "ninjaman"
+	# ''.join(format(ord(x), '=8b') for x in "ninjaman")
+	interlace='11011101101001110111011010101100001110110111000011101110'
+	y=sha256(password+salt2)
+	a=""
+	for z in range(len(x)):
+		if interlace[z]=='0':
+			a+=x[z]
+		else:
+			a+=y[z]
+	return [a,salt2]
 
 
 class Auth(object):
@@ -136,14 +158,15 @@ class Auth(object):
     def admin_required(self, func):
         return self.test_user(lambda u: u.admin)(func)
 
-    def authenticate(self, username, password):
+    def authenticate(self, username, ihash,salt1,salt2):
         active = self.User.select().where(self.User.active==True)
         try:
             user = active.where(self.User.username==username).get()
         except self.User.DoesNotExist:
             return False
         else:
-            if not user.check_password(password):
+			i=interlacehash(user.password,salt1,salt2)
+            if not i==ihash:
                 return False
 
         return user
@@ -186,7 +209,9 @@ class Auth(object):
             if form.validate():
                 authenticated_user = self.authenticate(
                     form.username.data,
-                    form.password.data,
+                    form.ihash.data,
+                    form.salt1.data,
+                    form.salt2.data,
                 )
                 if authenticated_user:
                     self.login_user(authenticated_user)
