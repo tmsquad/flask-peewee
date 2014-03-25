@@ -1,5 +1,7 @@
 import functools
 import os
+import random
+import hashlib
 
 from flask import Blueprint
 from flask import abort
@@ -46,11 +48,11 @@ class BaseUser(object):
 def interlacehash(password, salt1, salt2=None):
 	if salt2 is None:
 		salt2=str(random.randint(100,1000000))
-	x=sha256(password+salt1)
+	x=hashlib.sha256(password+salt1).hexdigest()
 	# 8 bit ascii of "ninjaman"
-	# ''.join(format(ord(x), '=8b') for x in "ninjaman")
-	interlace='11011101101001110111011010101100001110110111000011101110'
-	y=sha256(password+salt2)
+	# ''.join(format(ord(x), '=8b') for x in "ninjaman").replace(" ","0")
+	interlace='0110111001101001011011100110101001100001011011010110000101101110'
+	y=hashlib.sha256(password+salt2).hexdigest()
 	a=""
 	for z in range(len(x)):
 		if interlace[z]=='0':
